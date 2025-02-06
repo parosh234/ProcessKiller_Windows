@@ -1,0 +1,63 @@
+import ctypes  # Importing ctypes to interact with Windows API
+import sys     # For exiting the program gracefully
+
+# Load Windows API libraries
+k_handle = ctypes.WinDLL("Kernel32.dll")  # Kernel32.dll handles system-level tasks
+u_handle = ctypes.WinDLL("User32.dll")    # User32.dll handles GUI-related tasks
+
+# Process access rights (gives full control over the process)
+PROCESS_ALL_ACCESS = (0x000F0000 | 0x00100000 | 0x0FFF)
+
+# Taking window name input from the user
+window_name = input("Enter the Window Name to Terminate: ")
+IpWindowName = ctypes.c_char_p(window_name.encode('utf-8'))
+
+# Find the window handle (HWND) using the window title
+hWnd = u_handle.FindWindowA(None, IpWindowName)
+
+# Error handling if window is not found
+if hWnd == 0:
+    print(f"❌ Error: Could not grab window handle. Error Code: {k_handle.GetLastError()}")
+    sys.exit(1)
+else:
+    print("✅ Window handle obtained successfully.")
+
+# Get the Process ID (PID) associated with the window handle
+lpdwProcessId = ctypes.c_ulong()
+response = u_handle.GetWindowThreadProcessId(hWnd, ctypes.byref(lpdwProcessId))
+
+# Error handling if unable to retrieve the Process ID
+if response == 0:
+    print(f"❌ Error: Could not retrieve the process ID. Error Code: {k_handle.GetLastError()}")
+    sys.exit(1)
+else:
+    print(f"✅ Process ID retrieved successfully: {lpdwProcessId.value}")
+
+# Open the target process to get a handle with full access
+dwDesiredAccess = PROCESS_ALL_ACCESS
+bInheritHandle = False
+dwProcessId = lpdwProcessId.value
+
+# Correct method name is OpenProcess (not openProcess)
+hProcess = k_handle.OpenProcess(dwDesiredAccess, bInheritHandle, dwProcessId)
+
+# Error handling if unable to get process handle
+if not hProcess:
+    print(f"❌ Error: Could not get privileged process handle. Error Code: {k_handle.GetLastError()}")
+    sys.exit(1)
+else:
+    print("✅ Privileged process handle obtained successfully.")
+
+# Terminating the process with exit code 1
+ExitCode = 0x1
+terminate_response = k_handle.TerminateProcess(hProcess, ExitCode)
+
+# Error handling if unable to terminate the process
+if not terminate_response:
+    print(f"❌ Error: Could not terminate the process. Error Code: {k_handle.GetLastError()}")
+    sys.exit(1)
+else:
+    print("✅ Process terminated successfully.")
+
+# Close the process handle to free up resources
+k_handle.CloseHandle(hProcess)
