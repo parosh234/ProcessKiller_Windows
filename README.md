@@ -1,1 +1,1 @@
-This code terminate Windows Task Manager
+This code terminates Windows Task Manager. Run this command in Windows cmd as an administrator mode.
